@@ -32,6 +32,24 @@
 #define USE_ASF
 //#define USE_DIRECT_REGISTERS
 
+
+#define STDIO_HW		SERCOM0
+#define STDIO_BAUD 		115200
+#define STDIO_MUX 		USART_RX_1_TX_0_XCK_1
+#define STDIO_PAD0		PINMUX_PA04D_SERCOM0_PAD0
+#define STDIO_PAD1		PINMUX_PA05D_SERCOM0_PAD1
+#define STDIO_PAD2		PINMUX_UNUSED
+#define STDIO_PAD3		PINMUX_UNUSED
+
+#define LED_PIN			PIN_PA27
+#define LED_PIN_CONFIG	{ PORT_PIN_DIR_OUTPUT, PORT_PIN_PULL_NONE, false }
+
+
+static struct usart_module usart_instance;
+
+
+
+
 #ifdef USE_DIRECT_REGISTERS
 
 void clock_48mhz(void) {
@@ -108,11 +126,26 @@ void clock_48mhz(void) {
 #endif
 
 
-#define LED_PIN			PIN_PA27
-#define LED_PIN_CONFIG	{ PORT_PIN_DIR_OUTPUT, PORT_PIN_PULL_NONE, false }
+void cph_stdio_init(void) {
+
+	struct usart_config config_usart;
+	usart_get_config_defaults(&config_usart);
+
+	config_usart.baudrate = STDIO_BAUD;
+	config_usart.mux_setting = STDIO_MUX;
+	config_usart.pinmux_pad0 = STDIO_PAD0;
+	config_usart.pinmux_pad1 = STDIO_PAD1;
+	config_usart.pinmux_pad2 = STDIO_PAD2;
+	config_usart.pinmux_pad3 = STDIO_PAD3;
+
+	stdio_serial_init(&usart_instance, STDIO_HW, &config_usart);
+	usart_enable(&usart_instance);
+}
 
 int main (void)
 {
+	uint32_t counter = 0;
+
 
 #ifdef USE_ASF	
 	system_init();
@@ -123,15 +156,25 @@ int main (void)
 #endif
 
 	delay_init();
-
-
+	
+	cph_stdio_init();
+	
 	struct port_config config_port = LED_PIN_CONFIG;
 	port_pin_set_config(LED_PIN, &config_port);
 	
 	//port_pin_toggle_output_level(LED_PIN);
 	port_pin_set_output_level(LED_PIN, false);
+
+	for (int i=0;i<50;i++) {
+		port_pin_toggle_output_level(LED_PIN);
+		delay_ms(100);
+	}
+	
+	printf("TEST D21 48MHz\r\n");
+	printf("CPU FREQ: %lu\r\n", system_gclk_gen_get_hz(0));
 	
 	while(1) {
+		printf("%08x\r\n", counter++);
 		delay_ms(500);
 		port_pin_toggle_output_level(LED_PIN);
 	}
